@@ -108,7 +108,7 @@ namespace DuplicateAccessories
                 // Chỉ can thiệp khi là phụ kiện hợp lệ VÀ thực sự trùng ID với ô khác.
                 var probe = new Item();
                 probe.SetDefaults(netId);
-                if (!probe.accessory || probe.netID != netId) return;
+                if (!probe.accessory || probe.type != netId) return;
                 if (!IsDuplicate(armor, index, netId)) return;
 
                 EquipDirect(player, index, netId, prefix);
@@ -124,7 +124,7 @@ namespace DuplicateAccessories
         {
             for (int i = FirstAccessory; i <= LastAccessory; i++)
             {
-                if (i != selfIndex && armor[i].netID == netId)
+                if (i != selfIndex && armor[i].type == netId)
                     return true;
             }
             return false;
@@ -172,7 +172,7 @@ namespace DuplicateAccessories
                 return;
             }
 
-            EquipDirect(player, index, held.netID, held.prefix);
+            EquipDirect(player, index, held.type, held.prefix);
 
             // Chuyển (không nhân bản) vật phẩm: xoá khỏi tay.
             held.TurnToAir();
@@ -212,21 +212,21 @@ namespace DuplicateAccessories
                 var item = armor[i];
                 if (item == null || item.IsAir) continue;
 
-                int id = item.netID;
+                int id = item.type;
                 if (!StackRules.TryGetValue(id, out var rule)) continue;
 
                 // Bỏ qua nếu ID này đã được đếm ở ô trước đó (tránh áp dụng nhiều lần).
                 bool counted = false;
                 for (int k = FirstAccessory; k < i; k++)
                 {
-                    if (armor[k].netID == id) { counted = true; break; }
+                    if (armor[k].type == id) { counted = true; break; }
                 }
                 if (counted) continue;
 
                 int total = 1;
                 for (int j = i + 1; j <= LastAccessory; j++)
                 {
-                    if (armor[j].netID == id) total++;
+                    if (armor[j].type == id) total++;
                 }
 
                 if (total > 1)
