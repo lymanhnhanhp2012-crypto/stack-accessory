@@ -30,6 +30,7 @@ namespace DuplicateAccessories
         private const int LastAccessoryPacketSlot = InventorySlots + LastAccessory;
 
         private const string Permission = "dupacc.use";
+        private const bool Debug = true; // đặt false khi không cần log chẩn đoán
         private const double TickIntervalMs = 250;
 
         // Luật cộng dồn: ItemID -> (player, số bản sao THÊM ngoài bản đầu tiên).
@@ -75,13 +76,15 @@ namespace DuplicateAccessories
         // ------------------------------------------------------------------
         private void OnGetData(GetDataEventArgs e)
         {
-            if (e.Handled || e.MsgID != PacketTypes.PlayerSlot)
-                return;
-
             try
             {
-                var player = TShock.Players[e.Msg.whoAmI];
-                if (player == null || !player.Active || player.TPlayer == null || !player.HasPermission(Permission))
+                if (Debug && e.MsgID == PacketTypes.ItemDrop)
+                {
+                    TShock.Log.Info($"[DupAcc][DEBUG] ItemDrop from={e.Msg.whoAmI} alreadyHandled={e.Handled}");
+                    return;
+                }
+
+                if (e.MsgID != PacketTypes.PlayerSlot)
                     return;
 
                 byte playerId;
@@ -98,8 +101,20 @@ namespace DuplicateAccessories
                     netId = r.ReadInt16();
                 }
 
+                if (Debug && stack == 0)
+                    TShock.Log.Info($"[DupAcc][DEBUG] PlayerSlot CLEAR from={e.Msg.whoAmI} slot={slot} alreadyHandled={e.Handled}");
+
+                if (e.Handled)
+                    return;
+
+                if (slot < FirstAccessoryPacketSlot || slot > LastAccessoryPacketSlot)
+                    return;
+
+                var player = TShock.Players[e.Msg.whoAmI];
+                if (player == null || !player.Active || player.TPlayer == null || !player.HasPermission(Permission))
+                    return;
+
                 if (playerId != player.Index) return;
-                if (slot < FirstAccessoryPacketSlot || slot > LastAccessoryPacketSlot) return;
                 if (stack != 1 || netId <= 0 || netId >= ItemID.Count) return;
 
                 int index = slot - InventorySlots;
@@ -110,6 +125,9 @@ namespace DuplicateAccessories
                 probe.SetDefaults(netId);
                 if (!probe.accessory || probe.type != netId) return;
                 if (!IsDuplicate(armor, index, netId)) return;
+
+                if (Debug)
+                    TShock.Log.Info($"[DupAcc][DEBUG] Intercept dup accessory player={player.Name} slot={slot} item={netId}");
 
                 EquipDirect(player, index, netId, prefix);
                 e.Handled = true; // bỏ qua xử lý mặc định của TShock/server
